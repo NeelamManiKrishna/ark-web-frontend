@@ -1,0 +1,24 @@
+.app-layout {
+  min-height: 100vh;
+  background-color: #f1f5f9;
+}
+
+.app-content {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 56px);
+  margin-top: 56px;
+  margin-left: 0;
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar-open .app-content {
+  margin-left: 250px;
+}
+
+/* On small screens, content never shifts — sidebar overlays */
+@media (max-width: 991.98px) {
+  .sidebar-open .app-content {
+    margin-left: 0;
+  }
+}

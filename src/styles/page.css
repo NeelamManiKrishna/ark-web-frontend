@@ -1,0 +1,15 @@
+/* Global page layout styles — reusable across all pages */
+
+.page-container {
+  width: 100%;
+}
+
+.app-content > main {
+  flex: 1;
+}
+
+.page-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1e293b;
+}
