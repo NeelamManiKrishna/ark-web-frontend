@@ -1,6 +1,7 @@
-import { Navigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth.ts'
+import { hasRole } from '../config/roles.ts'
 import type { UserRole } from '../types/auth.ts'
+import NotAllowed from './NotAllowed.tsx'
 
 interface RoleGuardProps {
   roles: UserRole[]
@@ -10,8 +11,8 @@ interface RoleGuardProps {
 function RoleGuard({ roles, children }: RoleGuardProps) {
   const { user } = useAuth()
 
-  if (!user || !roles.includes(user.role)) {
-    return <Navigate to="/" replace />
+  if (!hasRole(user?.role, roles)) {
+    return <NotAllowed />
   }
 
   return <>{children}</>

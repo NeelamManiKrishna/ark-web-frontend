@@ -1,8 +1,9 @@
-import { useCallback, useMemo } from 'react'
-import { NavLink } from 'react-router-dom'
+import { useEffect, useMemo } from 'react'
+import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth.ts'
-import { ROLE_PERMISSIONS, hasRole } from '../../config/roles.ts'
-import type { UserRole } from '../../types/auth.ts'
+import { hasRole } from '../../config/roles.ts'
+import { viewRoles } from '../../config/permissions.ts'
+import type { Feature } from '../../config/permissions.ts'
 import './Sidebar.css'
 
 interface SidebarProps {
@@ -14,102 +15,125 @@ interface NavItem {
   to: string
   label: string
   icon: string
-  roles?: UserRole[]
+  feature?: Feature
+}
+
+interface NavGroup {
+  heading?: string
+  items: NavItem[]
 }
 
 const MOBILE_BREAKPOINT = 992
 
 function Sidebar({ isOpen, onClose }: SidebarProps) {
-  const { user } = useAuth()
+  const { user, scope } = useAuth()
+  const location = useLocation()
   const orgId = user?.organizationId
-  const branchId = user?.branchId
   const role = user?.role
+  // Branch-limited roles (ADMIN, USER) work inside their single branch.
+  const branchId = scope && !scope.allBranches && scope.branchIds.length === 1 ? scope.branchIds[0] : user?.branchId
+  const isOrgWide = role === 'SUPER_ADMIN' || role === 'ORG_ADMIN'
 
-  const navItems = useMemo((): NavItem[] => {
-    const items: NavItem[] = [
-      { to: '/', label: 'Dashboard', icon: '\u2302' },
+  const groups = useMemo((): NavGroup[] => {
+    const org = orgId ? `/organizations/${orgId}` : ''
+    const branch = orgId && branchId ? `${org}/branches/${branchId}` : ''
+
+    const people: NavItem[] = []
+    if (isOrgWide && orgId) {
+      people.push({ to: `${org}/students`, label: 'Students', icon: '\u{1F393}', feature: 'students' })
+    } else if (branch) {
+      people.push({ to: `${branch}/students`, label: 'Students', icon: '\u{1F393}', feature: 'students' })
+    }
+    if (orgId) {
+      people.push({ to: `${org}/faculty`, label: 'Faculty', icon: '\u{1F9D1}‍\u{1F3EB}', feature: 'faculty' })
+    }
+    if (role === 'ORG_ADMIN' && orgId) {
+      people.push({ to: `${org}/users`, label: 'Users', icon: '\u{1F465}', feature: 'users' })
+    }
+
+    const academics: NavItem[] = []
+    if (branch) {
+      academics.push(
+        { to: `${branch}/classes`, label: 'Classes', icon: '\u{1F3EB}', feature: 'classes' },
+        { to: `${branch}/examinations`, label: 'Examinations', icon: '\u{1F4DD}', feature: 'examinations' },
+      )
+    }
+    if (role === 'ORG_ADMIN' && orgId) {
+      academics.push({ to: `${org}/branches`, label: 'Branches & classes', icon: '\u{1F3EB}', feature: 'branches' })
+    }
+
+    const reports: NavItem[] = [
+      {
+        to: role === 'SUPER_ADMIN' || !orgId ? '/reports' : `${org}/reports`,
+        label: 'Reports',
+        icon: '\u{1F4CA}',
+        feature: 'reports',
+      },
     ]
 
-    // Super Admin: Organizations (drill-down to branches/students/etc)
-    items.push(
-      { to: '/organizations', label: 'Organizations', icon: '\u2616', roles: ROLE_PERMISSIONS.organizations },
-    )
-
-    // Org Admin: manages all branches, students, faculty, users in their org
+    const admin: NavItem[] = [
+      { to: '/organizations', label: 'Organizations', icon: '\u{1F3E2}', feature: 'organizations' },
+    ]
     if (role === 'ORG_ADMIN' && orgId) {
-      items.push(
-        { to: `/organizations/${orgId}/branches`, label: 'Branches', icon: '\u2616', roles: ROLE_PERMISSIONS.branches },
-        { to: `/organizations/${orgId}/students`, label: 'Students', icon: '\u2630', roles: ROLE_PERMISSIONS.students },
-        { to: `/organizations/${orgId}/faculty`, label: 'Faculty', icon: '\u263A', roles: ROLE_PERMISSIONS.faculty },
-        { to: `/organizations/${orgId}/users`, label: 'Users', icon: '\u263A', roles: ROLE_PERMISSIONS.users },
+      admin.push(
+        { to: `${org}/settings`, label: 'Settings', icon: '⚙️', feature: 'settings' },
+        { to: `${org}/audit-logs`, label: 'Audit log', icon: '\u{1F50D}', feature: 'orgAudit' },
       )
     }
+    admin.push({ to: '/audit-logs', label: 'Audit logs', icon: '\u{1F50D}', feature: 'auditLogs' })
 
-    // Admin: manages students, faculty, classes, examinations within their org/branch
-    if (role === 'ADMIN' && orgId) {
-      if (branchId) {
-        items.push(
-          { to: `/organizations/${orgId}/branches/${branchId}/classes`, label: 'Classes', icon: '\u2616', roles: ROLE_PERMISSIONS.classes },
-          { to: `/organizations/${orgId}/branches/${branchId}/students`, label: 'Students', icon: '\u2630', roles: ROLE_PERMISSIONS.students },
-          { to: `/organizations/${orgId}/branches/${branchId}/examinations`, label: 'Examinations', icon: '\u2637', roles: ROLE_PERMISSIONS.examinations },
-        )
-      }
-      items.push(
-        { to: `/organizations/${orgId}/faculty`, label: 'Faculty', icon: '\u263A', roles: ROLE_PERMISSIONS.faculty },
-      )
-    }
+    return [
+      { items: [{ to: '/', label: 'Dashboard', icon: '\u{1F3E0}' }] },
+      { heading: 'People', items: people },
+      { heading: 'Academics', items: academics },
+      { heading: 'Reports', items: reports },
+      { heading: 'Admin', items: admin },
+    ]
+  }, [role, orgId, branchId, isOrgWide])
 
-    // User: read-only access to faculty (students accessed via branch > classes drill-down)
-    if (role === 'USER' && orgId) {
-      if (branchId) {
-        items.push(
-          { to: `/organizations/${orgId}/branches/${branchId}/students`, label: 'Students', icon: '\u2630', roles: ROLE_PERMISSIONS.students },
-        )
-      }
-      items.push(
-        { to: `/organizations/${orgId}/faculty`, label: 'Faculty', icon: '\u263A', roles: ROLE_PERMISSIONS.faculty },
-      )
-    }
-
-    items.push(
-      { to: '/academic-records', label: 'Academic Records', icon: '\u2630', roles: ROLE_PERMISSIONS.academicRecords },
-      { to: '/reports', label: 'Reports', icon: '\u2637', roles: ROLE_PERMISSIONS.reports },
-      { to: '/audit-logs', label: 'Audit Logs', icon: '\u2618', roles: ROLE_PERMISSIONS.auditLogs },
-    )
-
-    return items
-  }, [role, orgId, branchId])
-
-  const visibleItems = useMemo(
-    () => navItems.filter((item) => !item.roles || hasRole(user?.role, item.roles)),
-    [navItems, user?.role],
+  const visibleGroups = useMemo(
+    () =>
+      groups
+        .map((g) => ({
+          ...g,
+          items: g.items.filter((item) => !item.feature || hasRole(role, viewRoles(item.feature))),
+        }))
+        .filter((g) => g.items.length > 0),
+    [groups, role],
   )
 
-  const handleNavClick = useCallback(() => {
+  // Close the drawer on navigation (mobile only).
+  useEffect(() => {
     if (window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`).matches) {
       onClose()
     }
-  }, [onClose])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname])
 
   return (
     <>
       <div
         className={`sidebar-overlay d-lg-none ${isOpen ? 'visible' : ''}`}
         onClick={onClose}
+        aria-hidden="true"
       />
-      <nav className={`app-sidebar ${isOpen ? 'open' : ''}`}>
+      <nav className={`app-sidebar ${isOpen ? 'open' : ''}`} aria-label="Main navigation">
         <div className="sidebar-nav">
-          {visibleItems.map((item) => (
-            <NavLink
-              key={item.to}
-              className="sidebar-link"
-              to={item.to}
-              end={item.to === '/'}
-              onClick={handleNavClick}
-            >
-              <span className="sidebar-link-icon">{item.icon}</span>
-              <span className="sidebar-link-text">{item.label}</span>
-            </NavLink>
+          {visibleGroups.map((group, i) => (
+            <div key={group.heading ?? i} className="sidebar-group">
+              {group.heading && <div className="sidebar-group-heading">{group.heading}</div>}
+              {group.items.map((item) => (
+                <NavLink
+                  key={item.to}
+                  className="sidebar-link"
+                  to={item.to}
+                  end={item.to === '/'}
+                >
+                  <span className="sidebar-link-icon" aria-hidden="true">{item.icon}</span>
+                  <span className="sidebar-link-text">{item.label}</span>
+                </NavLink>
+              ))}
+            </div>
           ))}
         </div>
       </nav>

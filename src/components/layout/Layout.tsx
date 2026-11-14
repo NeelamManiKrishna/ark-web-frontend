@@ -13,10 +13,11 @@ function Layout() {
 
   return (
     <div className={`app-layout ${sidebarOpen ? 'sidebar-open' : ''}`}>
+      <a className="skip-link" href="#main-content">Skip to main content</a>
       <Header isSidebarOpen={sidebarOpen} onToggleSidebar={toggleSidebar} />
       <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} />
       <div className="app-content">
-        <main className="container-fluid p-4">
+        <main id="main-content" tabIndex={-1} className="container-fluid p-4">
           <Outlet />
         </main>
         <Footer />

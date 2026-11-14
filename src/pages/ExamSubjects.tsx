@@ -33,6 +33,7 @@ import ConfirmModal from '../components/ConfirmModal.tsx'
 import Modal from '../components/Modal.tsx'
 import LoadingSpinner from '../components/LoadingSpinner.tsx'
 import EmptyState from '../components/EmptyState.tsx'
+import { fetchAll } from '../api/paging.ts'
 
 // ── Create form (batch) ──────────────────────────────────────────────
 interface CreateFormData {
@@ -134,7 +135,7 @@ function ExamSubjects() {
     getExaminationById(organizationId, examId)
       .then((data) => {
         setExam(data)
-        getAcademicClasses(organizationId, data.branchId, 0, 200)
+        fetchAll((p, s) => getAcademicClasses(organizationId, data.branchId, p, s))
           .then((classData) => {
             setClasses(classData.content)
             const map = new Map<string, string>()

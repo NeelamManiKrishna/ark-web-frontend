@@ -9,3 +9,18 @@ body {
 #root {
   min-height: 100vh;
 }
+
+/* Skip link: visible only when focused */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 2000;
+  padding: 8px 16px;
+  background: #0d6efd;
+  color: #fff;
+  border-radius: 0 0 6px 0;
+}
+.skip-link:focus {
+  left: 0;
+}

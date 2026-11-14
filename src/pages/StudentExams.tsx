@@ -8,6 +8,7 @@ import { useToast } from '../hooks/useToast.ts'
 import StatusBadge from '../components/StatusBadge.tsx'
 import Pagination from '../components/Pagination.tsx'
 import Toast from '../components/Toast.tsx'
+import { StudentTabs } from '../components/PageTabs.tsx'
 
 function StudentExams() {
   const { organizationId, branchId, studentId } = useParams<{
@@ -76,6 +77,7 @@ function StudentExams() {
 
   return (
     <div className="page-container">
+      <StudentTabs organizationId={organizationId} branchId={branchId} studentId={studentId} />
       {toast && (
         <Toast message={toast.message} type={toast.type} onClose={dismiss} />
       )}

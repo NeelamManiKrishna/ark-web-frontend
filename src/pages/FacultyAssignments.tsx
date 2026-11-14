@@ -25,6 +25,8 @@ import Modal from '../components/Modal.tsx'
 import { ASSIGNMENT_TYPE_OPTIONS, ASSIGNMENT_STATUS_OPTIONS } from '../constants/statuses.ts'
 import LoadingSpinner from '../components/LoadingSpinner.tsx'
 import EmptyState from '../components/EmptyState.tsx'
+import { FacultyTabs } from '../components/PageTabs.tsx'
+import { fetchAll } from '../api/paging.ts'
 
 function FacultyAssignments() {
   const { organizationId, branchId, facultyId } = useParams<{
@@ -77,7 +79,7 @@ function FacultyAssignments() {
   // Fetch classes for name lookup + create form
   useEffect(() => {
     if (!organizationId || !branchId) return
-    getAcademicClasses(organizationId, branchId, 0, 200)
+    fetchAll((p, s) => getAcademicClasses(organizationId, branchId, p, s))
       .then((data) => {
         setClasses(data.content)
         const map = new Map<string, string>()
@@ -249,6 +251,7 @@ function FacultyAssignments() {
 
   return (
     <div className="page-container">
+      <FacultyTabs organizationId={organizationId} branchId={branchId} facultyId={facultyId} />
       {toast && <Toast message={toast.message} type={toast.type} onClose={dismiss} />}
 
       <div className="mb-3">

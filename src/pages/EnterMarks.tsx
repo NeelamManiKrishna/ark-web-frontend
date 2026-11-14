@@ -1,7 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { getExaminations, getExamSubjects, getExamResults, createExamResult, updateExamResult } from '../api/examinationApi.ts'
-import { getAcademicClassById } from '../api/academicClassApi.ts'
 import { getStudents } from '../api/studentApi.ts'
 import { useToast } from '../hooks/useToast.ts'
 import { useCanWrite } from '../hooks/useCanWrite.ts'
@@ -12,6 +11,9 @@ import Toast from '../components/Toast.tsx'
 import LoadingSpinner from '../components/LoadingSpinner.tsx'
 import EmptyState from '../components/EmptyState.tsx'
 import StatusBadge from '../components/StatusBadge.tsx'
+import { useTenantNames } from '../hooks/useTenantNames.ts'
+import { ClassTabs } from '../components/PageTabs.tsx'
+import { fetchAll } from '../api/paging.ts'
 
 interface MarkEntry {
   studentId: string
@@ -32,7 +34,7 @@ function EnterMarks() {
   const canWrite = useCanWrite(WRITE_ROLES.examinations)
   const { toast, showSuccess, showError, dismiss } = useToast()
 
-  const [className, setClassName] = useState('')
+  const { className } = useTenantNames(organizationId, branchId, classId)
   const [exams, setExams] = useState<ExaminationResponse[]>([])
   const [subjects, setSubjects] = useState<ExamSubjectResponse[]>([])
   const [students, setStudents] = useState<StudentResponse[]>([])
@@ -57,21 +59,14 @@ function EnterMarks() {
 
   const dirtyCount = useMemo(() => entries.filter((e) => e.dirty).length, [entries])
 
-  // Fetch class name
-  useEffect(() => {
-    if (!organizationId || !branchId || !classId) return
-    getAcademicClassById(organizationId, branchId, classId)
-      .then((cls) => setClassName(`${cls.name}${cls.section ? ' - ' + cls.section : ''}`))
-      .catch(() => setClassName('Unknown Class'))
-  }, [organizationId, branchId, classId])
 
   // Fetch exams for branch + students for class
   useEffect(() => {
     if (!organizationId || !branchId || !classId) return
     setInitialLoading(true)
     Promise.all([
-      getExaminations(organizationId, branchId, 0, 100),
-      getStudents(organizationId, 0, 200, branchId, classId),
+      fetchAll((p, s) => getExaminations(organizationId, branchId, p, s)),
+      fetchAll((p, s) => getStudents(organizationId, p, s, branchId, classId)),
     ])
       .then(([examData, studentData]) => {
         setExams(examData.content)
@@ -91,7 +86,7 @@ function EnterMarks() {
       setSelectedSubjectId('')
       return
     }
-    getExamSubjects(organizationId, selectedExamId, 0, 100)
+    fetchAll((p, s) => getExamSubjects(organizationId, selectedExamId, p, s))
       .then((data) => {
         setSubjects(data.content)
         setSelectedSubjectId('')
@@ -108,7 +103,7 @@ function EnterMarks() {
     setEntries([]) // Clear previous subject's marks immediately
     setLoading(true)
     try {
-      const resultsData = await getExamResults(organizationId, selectedExamId, selectedSubjectId, 0, 1000)
+      const resultsData = await fetchAll((p, s) => getExamResults(organizationId, selectedExamId, selectedSubjectId, p, s))
       const resultMap = new Map<string, ExamResultResponse>()
       for (const r of resultsData.content) {
         // Safety: only include results for the selected subject
@@ -210,6 +205,7 @@ function EnterMarks() {
 
   return (
     <div className="page-container">
+      <ClassTabs organizationId={organizationId} branchId={branchId} classId={classId} />
       {toast && <Toast message={toast.message} type={toast.type} onClose={dismiss} />}
 
       <div className="mb-3">

@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react'
 import type { ReactNode } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { getRedirectTarget } from './auth/redirect.ts'
 import { useAuth } from './hooks/useAuth.ts'
 import Layout from './components/layout/Layout.tsx'
 import ProtectedRoute from './components/ProtectedRoute.tsx'
@@ -11,6 +12,7 @@ import type { UserRole } from './types/auth.ts'
 
 const Login = lazy(() => import('./pages/Login.tsx'))
 const Dashboard = lazy(() => import('./pages/Dashboard.tsx'))
+const Profile = lazy(() => import('./pages/Profile.tsx'))
 const Organizations = lazy(() => import('./pages/Organizations.tsx'))
 const Branches = lazy(() => import('./pages/Branches.tsx'))
 const Classes = lazy(() => import('./pages/Classes.tsx'))
@@ -33,7 +35,7 @@ const FacultyPerformance = lazy(() => import('./pages/FacultyPerformance.tsx'))
 const ClassProgression = lazy(() => import('./pages/ClassProgression.tsx'))
 const Promotions = lazy(() => import('./pages/Promotions.tsx'))
 const EnterMarks = lazy(() => import('./pages/EnterMarks.tsx'))
-const AcademicRecords = lazy(() => import('./pages/AcademicRecords.tsx'))
+const Settings = lazy(() => import('./pages/Settings.tsx'))
 const Reports = lazy(() => import('./pages/Reports.tsx'))
 const AuditLogs = lazy(() => import('./pages/AuditLogs.tsx'))
 const NotFound = lazy(() => import('./pages/NotFound.tsx'))
@@ -53,6 +55,7 @@ function Page({ children, roles }: { children: ReactNode; roles?: UserRole[] }) 
 
 function AppRoutes() {
   const { isAuthenticated } = useAuth()
+  const location = useLocation()
 
   return (
     <Routes>
@@ -60,7 +63,7 @@ function AppRoutes() {
         path="login"
         element={
           isAuthenticated ? (
-            <Navigate to="/" replace />
+            <Navigate to={getRedirectTarget(location.state)} replace />
           ) : (
             <Suspense fallback={Fallback}><Login /></Suspense>
           )
@@ -96,8 +99,12 @@ function AppRoutes() {
         <Route path="organizations/:organizationId/branches/:branchId/students/:studentId/report-card" element={<Page roles={ROLE_PERMISSIONS.students}><StudentExams /></Page>} />
         <Route path="organizations/:organizationId/branches/:branchId/classes/:classId/results" element={<Page roles={ROLE_PERMISSIONS.classes}><ClassExams /></Page>} />
         <Route path="organizations/:organizationId/branches/:branchId/classes/:classId/enter-marks" element={<Page roles={ROLE_PERMISSIONS.examinations}><EnterMarks /></Page>} />
-        <Route path="academic-records" element={<Page><AcademicRecords /></Page>} />
-        <Route path="reports" element={<Page><Reports /></Page>} />
+        <Route path="me" element={<Page><Profile /></Page>} />
+        <Route path="academic-records" element={<Navigate to="/reports" replace />} />
+        <Route path="reports" element={<Page roles={ROLE_PERMISSIONS.reports}><Reports /></Page>} />
+        <Route path="organizations/:organizationId/reports" element={<Page roles={ROLE_PERMISSIONS.reports}><Reports /></Page>} />
+        <Route path="organizations/:organizationId/settings" element={<Page roles={ROLE_PERMISSIONS.settings}><Settings /></Page>} />
+        <Route path="organizations/:organizationId/audit-logs" element={<Page roles={ROLE_PERMISSIONS.orgAudit}><AuditLogs /></Page>} />
         <Route path="audit-logs" element={<Page roles={ROLE_PERMISSIONS.auditLogs}><AuditLogs /></Page>} />
         <Route path="*" element={<Page><NotFound /></Page>} />
       </Route>

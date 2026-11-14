@@ -1,12 +1,21 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { login } from '../api/authApi.ts'
 import { useAuth } from '../hooks/useAuth.ts'
+import { getRedirectTarget } from '../auth/redirect.ts'
 import './Login.css'
 
 function Login() {
   const navigate = useNavigate()
-  const { loginSuccess } = useAuth()
+  const location = useLocation()
+  const { loginSuccess, sessionNotice, clearSessionNotice } = useAuth()
+  // Keep the notice (e.g. session expired) visible after clearing it from the context.
+  const [notice] = useState(sessionNotice)
+  useEffect(() => {
+    if (sessionNotice) clearSessionNotice()
+  }, [sessionNotice, clearSessionNotice])
+
+  const redirectTo = getRedirectTarget(location.state)
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -26,7 +35,7 @@ function Login() {
     try {
       const auth = await login({ email: email.trim(), password })
       loginSuccess(auth)
-      navigate('/', { replace: true })
+      navigate(redirectTo, { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed')
     } finally {
@@ -46,6 +55,12 @@ function Login() {
         </div>
 
         <form onSubmit={handleSubmit} noValidate>
+          {notice && !error && (
+            <div className="alert alert-warning py-2" role="status">
+              {notice}
+            </div>
+          )}
+
           {error && (
             <div className="alert alert-danger py-2" role="alert">
               {error}

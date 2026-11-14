@@ -11,6 +11,7 @@ import type {
 import StatusBadge from '../components/StatusBadge.tsx'
 import Toast from '../components/Toast.tsx'
 import { PROMOTION_ACTIONS } from '../constants/statuses.ts'
+import { ClassTabs } from '../components/PageTabs.tsx'
 
 type Step = 'config' | 'preview' | 'results'
 
@@ -103,6 +104,7 @@ function Promotions() {
 
   return (
     <div className="page-container">
+      <ClassTabs organizationId={organizationId} branchId={branchId} classId={classId} />
       {toast && <Toast message={toast.message} type={toast.type} onClose={dismiss} />}
 
       <div className="mb-3">

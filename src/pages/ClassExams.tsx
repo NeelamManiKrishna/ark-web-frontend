@@ -9,6 +9,7 @@ import { useToast } from '../hooks/useToast.ts'
 import StatusBadge from '../components/StatusBadge.tsx'
 import Pagination from '../components/Pagination.tsx'
 import Toast from '../components/Toast.tsx'
+import { ClassTabs } from '../components/PageTabs.tsx'
 
 function ClassExams() {
   const { organizationId, branchId, classId } = useParams<{
@@ -79,6 +80,7 @@ function ClassExams() {
 
   return (
     <div className="page-container">
+      <ClassTabs organizationId={organizationId} branchId={branchId} classId={classId} />
       {toast && (
         <Toast message={toast.message} type={toast.type} onClose={dismiss} />
       )}

@@ -16,12 +16,14 @@ export function getUsers(
   size = 10,
   branchId?: string,
   sort?: string,
+  q?: string,
 ): Promise<PagedResponse<UserResponse>> {
   const params = new URLSearchParams()
   params.set('page', String(page))
   params.set('size', String(size))
   if (branchId) params.set('branchId', branchId)
   if (sort) params.set('sort', sort)
+  if (q) params.set('q', q)
   return get(`${basePath(organizationId)}?${params.toString()}`)
 }
 

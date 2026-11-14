@@ -9,6 +9,7 @@ interface ConfirmModalProps {
   detail?: string
   confirmLabel?: string
   loading?: boolean
+  loadingLabel?: string
 }
 
 function ConfirmModal({
@@ -20,11 +21,13 @@ function ConfirmModal({
   detail,
   confirmLabel = 'Delete',
   loading = false,
+  loadingLabel = 'Working...',
 }: ConfirmModalProps) {
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
+      closeOnBackdrop
       title={title}
       footer={
         <>
@@ -37,7 +40,7 @@ function ConfirmModal({
             disabled={loading}
             onClick={onConfirm}
           >
-            {loading ? 'Deleting...' : confirmLabel}
+            {loading ? loadingLabel : confirmLabel}
           </button>
         </>
       }

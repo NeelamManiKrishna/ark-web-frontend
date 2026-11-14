@@ -1,7 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { getEnrollmentsByClass, closeEnrollment } from '../api/enrollmentApi.ts'
-import { getAcademicClassById } from '../api/academicClassApi.ts'
 import { getStudents } from '../api/studentApi.ts'
 import { useToast } from '../hooks/useToast.ts'
 import { useCanWrite } from '../hooks/useCanWrite.ts'
@@ -15,6 +14,9 @@ import Modal from '../components/Modal.tsx'
 import { EXIT_REASON_OPTIONS } from '../constants/statuses.ts'
 import LoadingSpinner from '../components/LoadingSpinner.tsx'
 import EmptyState from '../components/EmptyState.tsx'
+import { useTenantNames } from '../hooks/useTenantNames.ts'
+import { ClassTabs } from '../components/PageTabs.tsx'
+import { fetchAll } from '../api/paging.ts'
 
 function ClassEnrollments() {
   const { organizationId, branchId, classId } = useParams<{
@@ -26,7 +28,7 @@ function ClassEnrollments() {
   const canWrite = useCanWrite(WRITE_ROLES.enrollments)
   const { toast, showSuccess, showError, dismiss } = useToast()
 
-  const [className, setClassName] = useState('')
+  const { className } = useTenantNames(organizationId, branchId, classId)
   const [enrollments, setEnrollments] = useState<StudentEnrollmentResponse[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -43,13 +45,6 @@ function ClassEnrollments() {
   const [closeExitDate, setCloseExitDate] = useState('')
   const [closeSubmitting, setCloseSubmitting] = useState(false)
 
-  // Fetch class name
-  useEffect(() => {
-    if (!organizationId || !branchId || !classId) return
-    getAcademicClassById(organizationId, branchId, classId)
-      .then((cls) => setClassName(`${cls.name} - ${cls.section}`))
-      .catch(() => setClassName('Unknown Class'))
-  }, [organizationId, branchId, classId])
 
   const fetchEnrollments = useCallback(async () => {
     if (!organizationId || !branchId || !classId) return
@@ -64,7 +59,7 @@ function ClassEnrollments() {
       const studentIds = [...new Set(data.content.map((e) => e.studentId))]
       if (studentIds.length > 0) {
         // Fetch students scoped to this class for the name map
-        const studentsData = await getStudents(organizationId, 0, 100, branchId, classId)
+        const studentsData = await fetchAll((p, s) => getStudents(organizationId, p, s, branchId, classId))
         const map = new Map<string, string>()
         for (const s of studentsData.content) {
           map.set(s.id, `${s.firstName} ${s.lastName}`)
@@ -112,6 +107,7 @@ function ClassEnrollments() {
 
   return (
     <div className="page-container">
+      <ClassTabs organizationId={organizationId} branchId={branchId} classId={classId} />
       {toast && <Toast message={toast.message} type={toast.type} onClose={dismiss} />}
 
       <div className="mb-3">

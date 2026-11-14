@@ -1,5 +1,92 @@
 # ARK Web Frontend - Change Log
 
+## 2026-11-14
+
+### Session 85: User Guide
+
+Added `docs/ARK_User_Guide.docx`: a step-by-step guide to every feature with 24 screenshots (`docs/manual-screenshots/`) and a "How this helps you" note per feature. Covers sign-in and sessions, profile and password, navigation, dashboard, branches, classes, students, faculty, users, the class workspace (roster, teachers, enter marks, results, promotion), examinations, reports, settings, audit log, Super Admin organizations, and what Admins and Users see. The older `ARK_User_Manual.docx` was not changed.
+
+---
+
+### Session 84: Browser Test Pass and Deep-Link Fix
+
+Tested in Chrome against the running backend as SUPER_ADMIN, ORG_ADMIN, ADMIN and USER.
+
+**Bug fixed:** after an expired session the user landed on the dashboard, not the page they were on. The `/login` route in `App.tsx` redirected to `/` as soon as the user was authenticated, which overrode the login page's own redirect. Both now use `auth/redirect.ts` (`getRedirectTarget`, local paths only, tested).
+
+**Verified:** org-admin dashboard, grouped sidebar, Reports (run), Settings (organization, academic years, subjects), org audit log (no organization filter), student search, all five class tabs; ADMIN has the Faculty branch filter locked to Main Campus, org audit shows Not allowed; USER has no Reports link, no add buttons, `/reports` shows Not allowed; SUPER_ADMIN Reports with organization picker; expired token redirects to login with the notice (no page reload) and returns to the same page; logging out in one tab signs out the other (`You were signed out in another tab.`); `/me` shows account and access; narrow window (about 420px) renders Reports with the sidebar collapsed.
+
+**Not tested in the browser:** change password (would alter a seed account), CSV download, bulk import, create/edit/delete flows, Faculty/Student tab pages with data.
+
+---
+
+### Session 83: Frontend Plan Phase 4 (part 2) — Shared Names Hook, Detail Tabs, Complete Lists
+
+Checked against the running backend first (all four seeded roles): login/me shape, scope, q search, catalogs, reports, org audit, refresh rotation, reuse revocation and logout all match the contract.
+
+1. **`useTenantNames`** (`hooks/useTenantNames.ts`): cached organization/branch/class names. Removed the duplicated name-fetch effects and state from Branches, Classes, Examinations, Students, Users, Faculty, OrgStudents, ClassProgression, ClassEnrollments, EnterMarks.
+2. **Detail tabs** (`components/PageTabs.tsx`): Class (Roster, Teachers, Results, Enter marks, Promotion), Student (Enrollments, Report cards), Faculty (Assignments, Performance). Tabs follow the permission table. No URLs changed. Faculty list passes `?branchId=` to the performance page so its tabs work.
+3. **Truncation bug fixed:** the backend caps page size at 100, so the 34 calls asking for 100/200/1000 rows silently lost rows beyond 100 (verified: `size=1000` returns `page.size=100`). New `fetchAll` (`api/paging.ts`, tested) walks every page; all 34 call sites use it.
+
+**Decisions:** `ClassExams` and `StudentExams` were kept: they are the Results and Report cards tabs, not duplicates. `OrgStudents` and `FacultyAssignments` were kept: replacing them means reworking the 860-line Students page and the assignment modal, which I did not do without a browser to check. The `/o/:orgId/...` route tree and URL redirects were not done (35 in-app links, no behaviour gain, high risk).
+
+**Still open:** `usePagedList`/`DataTable`/`PermissionGate`/`FormModal` kit, phone-width check, ORG_ADMIN Classes/Exams sidebar links, ADMIN creating USER accounts, Phase 5 docs for user manual.
+
+**Verification:** `tsc -b` clean, `npm run lint` 0 errors, `npm run build` clean, `npm run test` 28 passed.
+
+---
+
+### Session 82: Frontend Plan Phase 4 (part 1) — Permissions, Search, Reports, Settings, Accessibility
+
+Backend contract used: `/auth/me` (scope has `allBranches`), academic-years, subjects, `/reports/{enrollment|performance}`, `/organizations/{o}/audit-logs`, `q` on lists.
+
+1. **Permission table:** `config/permissions.ts` is the single source (view + write roles per feature, mirrors backend). `roles.ts` derives `ROLE_PERMISSIONS`/`WRITE_ROLES` from it. Added features: settings, catalogs, orgAudit. `reports` now excludes USER (backend does). ClassProgression/Promotions write rules checked against the backend and match.
+2. **Branch lock** uses `scope.allBranches` from `/auth/me`.
+3. **Search:** `q` added to the student, faculty, user, class and branch list APIs; `SearchBox` + debounce on Students, OrgStudents, Faculty, Users, Classes, Branches.
+4. **New APIs/pages:** `catalogApi`, `reportApi`, `getOrganizationAuditLogs`; pages Reports (replaces the stub; org/year/branch pickers, table, CSV), Settings (org details, academic years, subjects; ORG_ADMIN/SUPER_ADMIN), org audit log (AuditLogs in org mode). Routes: `organizations/:o/{reports,settings,audit-logs}`, `/reports`. Removed the Academic Records stub (`/academic-records` redirects to `/reports`).
+5. **Sidebar:** grouped (People, Academics, Reports, Admin), distinct icons, `aria-label`, closes on route change on mobile, ORG_ADMIN gets Settings and Audit log, branch-limited roles use their scope branch.
+6. **downloadFile fixed:** checks `res.ok`, reads the filename from Content-Disposition, attaches/removes the link, rejects with an `ApiError`. Bulk-import sample download shows the error.
+7. **Accessibility:** Toast `role`/`aria-live` and labelled close, `ConfirmModal` `loadingLabel` prop, `Modal` backdrop no longer discards unsaved forms (`closeOnBackdrop` opt-in; ConfirmModal opts in), skip link and `#main-content`, table captions/`scope` on new tables, `aria-describedby` on new forms.
+
+**Not done yet (rest of Phase 4):** shared kit (`usePagedList`, `DataTable`, `useTenantNames`, `PermissionGate`, `FormModal`) and converting the big list pages; the new `/o/:orgId/...` route tree with redirects; merging Student/Faculty/Class/Exam pages into tabs and deleting `OrgStudents`, `ClassExams`, `StudentExams`, `FacultyAssignments`; replacing remaining `0,100`/`0,1000` fetches with async selectors; ORG_ADMIN Classes/Exams links (needs the class-list restructure); audit date filter (backend has none); ADMIN creating USER accounts in the Users page; phone-width check; Phase 5 docs. Backend was not running, so none of this was exercised against it.
+
+**Verification:** `tsc -b` clean, `npm run lint` 0 errors, `npm run test` 25 passed.
+
+---
+
+### Session 81: Frontend Plan Phase 1 — Auth and Role Handling
+
+1. **Token module:** `src/auth/tokenStore.ts` is the only reader/writer of auth storage (token, refresh token, user, scope). `client.ts` and `AuthContext` both use it.
+2. **Refresh:** `src/auth/refreshSession.ts` is one deduplicated refresh shared by the HTTP client and the context timer; the rotated refresh token is stored every time. The timer re-reads the stored token, so client-initiated refreshes are respected.
+3. **No hard redirects:** `client.ts` emits a session-expired event (`auth/authEvents.ts`). The context clears state, `ProtectedRoute` redirects with the deep link in `state.from`, and Login shows the notice and returns to `from` after sign-in. An explicit logout does not keep the deep link.
+4. **Cross-tab:** `storage` listener syncs sign-in, refresh and sign-out between tabs.
+5. **Account API:** `api/accountApi.ts` adds `getMe`, `logoutRequest`, `logoutAllRequest`, `changePassword`. Logout now revokes the refresh token server-side. New `/me` page (Profile.tsx): account details, change password, sign out everywhere; header avatar links to it.
+6. **Scope:** after login the context loads `scope` from `GET /auth/me` (falls back to a scope derived from the login user if the endpoint is missing). `useAdminBranchScope` now reads the scope, no extra `getUserById` call.
+7. **RoleGuard** renders a Not allowed page instead of redirecting silently.
+8. **Open role type:** `UserRole` is an open union (future `PARENT`).
+9. **Errors:** `auth/apiError.ts` parses the contract error body into `ApiError` (`code`, `status`, `fieldErrors`) with friendly text per code; server text is shown for 400/409/422. `fieldErrorMap` helps forms.
+10. **Mock:** `VITE_USE_MOCK_AUTH=true` mocks the endpoints the backend does not have yet (`api/mock/mockAccount.ts`). Login and refresh stay real.
+11. **Tests:** tokenStore, refreshSession (dedupe, rotation, failure), apiError, RoleGuard.
+
+**Not done / notes:** the CSP is documented in README, not set as a meta tag (it would break Vite dev HMR). Faculty is the only page with a branch filter that needs the lock. Cross-tab, expiry redirect and the four-role walk-through have not been run in a browser yet.
+
+**Verification:** `npm run lint` — 0 errors; `tsc -b` — clean; `npm run test` — 20 passed.
+
+---
+
+### Session 80: Frontend Plan Phase 0 — Tooling and Hygiene
+
+1. Added `tsconfig.node.json` (referenced by `tsconfig.json` but missing) and `eslint.config.js` (flat config: typescript-eslint, react-hooks, react-refresh). The React Compiler rule `react-hooks/set-state-in-effect` is turned off because the existing fetch-in-effect and reset-page pattern trips it (32 hits).
+2. Added `.gitignore` (`node_modules`, `dist`, `.env*` except `.env.example`, `.DS_Store`) and `.env.example`. Untracked `.DS_Store`.
+3. Replaced the Vite template `README.md` with setup, scripts, env and CSP notes.
+4. Removed `src/assets/react.svg` and `public/vite.svg`; added `public/favicon.svg`, updated `index.html` icon and title.
+5. Added Vitest + Testing Library + jsdom (`npm run test`, `npm run test:watch`), `src/test/setup.ts` and a first test `src/config/roles.test.ts`.
+6. Added `.github/workflows/ci.yml` (lint, build, test).
+
+**Verification:** `npm run lint` — 0 errors; `npm run build` — clean; `npm run test` — 3 passed.
+
+---
+
 ## 2026-03-21
 
 ### Session 79: Pagination, Sorting & Ordering (Backend Section 39)

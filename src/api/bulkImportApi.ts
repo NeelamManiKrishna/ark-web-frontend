@@ -33,6 +33,6 @@ export function importBranches(
   return postMultipart(`${basePath(organizationId)}/branches`, file)
 }
 
-export function downloadSampleCsv(organizationId: string, entityType: string): void {
-  downloadFile(`${basePath(organizationId)}/samples/${entityType}`)
+export function downloadSampleCsv(organizationId: string, entityType: string): Promise<void> {
+  return downloadFile(`${basePath(organizationId)}/samples/${entityType}`)
 }

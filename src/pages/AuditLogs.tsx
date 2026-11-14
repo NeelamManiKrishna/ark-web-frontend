@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
-import { getAuditLogs } from '../api/auditLogApi.ts'
+import { useParams } from 'react-router-dom'
+import { getAuditLogs, getOrganizationAuditLogs } from '../api/auditLogApi.ts'
 import { getOrganizations } from '../api/organizationApi.ts'
 import type { AuditLogResponse, AuditAction } from '../types/auditLog.ts'
 import type { OrganizationResponse } from '../types/organization.ts'
@@ -7,6 +8,7 @@ import SortableHeader from '../components/SortableHeader.tsx'
 import Pagination from '../components/Pagination.tsx'
 import LoadingSpinner from '../components/LoadingSpinner.tsx'
 import EmptyState from '../components/EmptyState.tsx'
+import { fetchAll } from '../api/paging.ts'
 
 const ACTIONS: AuditAction[] = ['CREATE', 'UPDATE', 'DELETE', 'LOGIN', 'LOGIN_FAILED', 'LOGOUT', 'REGISTER']
 
@@ -26,6 +28,9 @@ function formatTimestamp(ts: string): string {
 }
 
 function AuditLogs() {
+  // With an :organizationId in the URL this is the single-organization audit trail (ORG_ADMIN or SUPER_ADMIN).
+  const { organizationId } = useParams<{ organizationId?: string }>()
+  const orgMode = !!organizationId
   const [logs, setLogs] = useState<AuditLogResponse[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -43,24 +48,35 @@ function AuditLogs() {
   const [organizations, setOrganizations] = useState<OrganizationResponse[]>([])
 
   useEffect(() => {
-    getOrganizations(0, 100)
+    if (orgMode) return
+    fetchAll((p, s) => getOrganizations(p, s))
       .then((data) => setOrganizations(data.content))
       .catch(() => { /* ignore */ })
-  }, [])
+  }, [orgMode])
 
   const fetchLogs = useCallback(async () => {
     setLoading(true)
     setError('')
     try {
-      const data = await getAuditLogs(
-        page,
-        20,
-        filterOrgId || undefined,
-        filterAction || undefined,
-        filterEntityType || undefined,
-        filterUserId || undefined,
-        sort,
-      )
+      const data = orgMode
+        ? await getOrganizationAuditLogs(
+            organizationId!,
+            page,
+            20,
+            filterAction || undefined,
+            filterEntityType || undefined,
+            filterUserId || undefined,
+            sort,
+          )
+        : await getAuditLogs(
+            page,
+            20,
+            filterOrgId || undefined,
+            filterAction || undefined,
+            filterEntityType || undefined,
+            filterUserId || undefined,
+            sort,
+          )
       setLogs(data.content)
       setTotalPages(data.page.totalPages)
     } catch (err) {
@@ -68,7 +84,7 @@ function AuditLogs() {
     } finally {
       setLoading(false)
     }
-  }, [page, filterOrgId, filterAction, filterEntityType, filterUserId, sort])
+  }, [orgMode, organizationId, page, filterOrgId, filterAction, filterEntityType, filterUserId, sort])
 
   useEffect(() => {
     fetchLogs()
@@ -86,26 +102,30 @@ function AuditLogs() {
   return (
     <div className="page-container">
       <div className="d-flex justify-content-between align-items-center mb-4">
-        <h1 className="page-title">Audit Logs</h1>
+        <h1 className="page-title">{orgMode ? 'Audit Log' : 'Audit Logs'}</h1>
       </div>
 
       {/* Filters */}
       <div className="row g-2 mb-4">
-        <div className="col-md-3">
-          <select
-            className="form-select form-select-sm"
-            value={filterOrgId}
-            onChange={handleFilterChange(setFilterOrgId)}
-          >
-            <option value="">All Organizations</option>
-            {organizations.map((org) => (
-              <option key={org.id} value={org.id}>{org.name}</option>
-            ))}
-          </select>
-        </div>
+        {!orgMode && (
+          <div className="col-md-3">
+            <select
+              className="form-select form-select-sm"
+              aria-label="Organization"
+              value={filterOrgId}
+              onChange={handleFilterChange(setFilterOrgId)}
+            >
+              <option value="">All Organizations</option>
+              {organizations.map((org) => (
+                <option key={org.id} value={org.id}>{org.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
         <div className="col-md-2">
           <select
             className="form-select form-select-sm"
+            aria-label="Action"
             value={filterAction}
             onChange={handleFilterChange(setFilterAction)}
           >

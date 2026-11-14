@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { getClassProgression, setClassProgression } from '../api/classProgressionApi.ts'
 import { getAcademicClasses } from '../api/academicClassApi.ts'
-import { getBranchById } from '../api/branchApi.ts'
+import { ApiError } from '../auth/apiError.ts'
 import { useToast } from '../hooks/useToast.ts'
 import { useCanWrite } from '../hooks/useCanWrite.ts'
 import { WRITE_ROLES } from '../config/roles.ts'
@@ -11,6 +11,8 @@ import type { AcademicClassResponse } from '../types/academicClass.ts'
 import Toast from '../components/Toast.tsx'
 import LoadingSpinner from '../components/LoadingSpinner.tsx'
 import EmptyState from '../components/EmptyState.tsx'
+import { useTenantNames } from '../hooks/useTenantNames.ts'
+import { fetchAll } from '../api/paging.ts'
 
 function ClassProgression() {
   const { organizationId, branchId } = useParams<{
@@ -21,7 +23,7 @@ function ClassProgression() {
   const canWrite = useCanWrite(WRITE_ROLES.classProgression)
   const { toast, showSuccess, showError, dismiss } = useToast()
 
-  const [branchName, setBranchName] = useState('')
+  const { branchName } = useTenantNames(organizationId, branchId)
   const [sequence, setSequence] = useState<ClassLevel[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -31,18 +33,11 @@ function ClassProgression() {
   // Available classes from the branch
   const [branchClasses, setBranchClasses] = useState<AcademicClassResponse[]>([])
 
-  // Fetch branch name
-  useEffect(() => {
-    if (!organizationId || !branchId) return
-    getBranchById(organizationId, branchId)
-      .then((b) => setBranchName(b.name))
-      .catch(() => setBranchName('Unknown Branch'))
-  }, [organizationId, branchId])
 
   // Fetch classes for dropdown
   useEffect(() => {
     if (!organizationId || !branchId) return
-    getAcademicClasses(organizationId, branchId, 0, 200)
+    fetchAll((p, s) => getAcademicClasses(organizationId, branchId, p, s))
       .then((data) => setBranchClasses(data.content))
       .catch(() => setBranchClasses([]))
   }, [organizationId, branchId])
@@ -57,7 +52,7 @@ function ClassProgression() {
       setDirty(false)
     } catch (err) {
       // 404 means no progression set yet — start with empty
-      if (err instanceof Error && err.message.includes('404')) {
+      if (err instanceof ApiError && err.status === 404) {
         setSequence([])
       } else {
         setError(err instanceof Error ? err.message : 'Failed to load class progression')

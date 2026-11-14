@@ -17,9 +17,13 @@ function Toast({ message, type = 'success', onClose, duration = 3000 }: ToastPro
   const bgClass = type === 'success' ? 'toast-success' : 'toast-error'
 
   return (
-    <div className={`app-toast ${bgClass}`}>
+    <div
+      className={`app-toast ${bgClass}`}
+      role={type === 'error' ? 'alert' : 'status'}
+      aria-live={type === 'error' ? 'assertive' : 'polite'}
+    >
       <span>{message}</span>
-      <button className="toast-close" onClick={onClose}>&times;</button>
+      <button type="button" className="toast-close" onClick={onClose} aria-label="Dismiss notification">&times;</button>
     </div>
   )
 }

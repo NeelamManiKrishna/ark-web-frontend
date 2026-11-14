@@ -17,6 +17,7 @@ export function getStudents(
   branchId?: string,
   classId?: string,
   sort?: string,
+  q?: string,
 ): Promise<PagedResponse<StudentResponse>> {
   const params = new URLSearchParams()
   params.set('page', String(page))
@@ -24,6 +25,7 @@ export function getStudents(
   if (branchId) params.set('branchId', branchId)
   if (classId) params.set('classId', classId)
   if (sort) params.set('sort', sort)
+  if (q) params.set('q', q)
   return get(`${basePath(organizationId)}?${params.toString()}`)
 }
 

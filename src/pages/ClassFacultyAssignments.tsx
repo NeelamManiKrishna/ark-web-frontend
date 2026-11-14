@@ -10,6 +10,8 @@ import Pagination from '../components/Pagination.tsx'
 import Toast from '../components/Toast.tsx'
 import LoadingSpinner from '../components/LoadingSpinner.tsx'
 import EmptyState from '../components/EmptyState.tsx'
+import { ClassTabs } from '../components/PageTabs.tsx'
+import { fetchAll } from '../api/paging.ts'
 
 function ClassFacultyAssignments() {
   const { organizationId, branchId, classId } = useParams<{
@@ -54,7 +56,7 @@ function ClassFacultyAssignments() {
       // Build faculty name map
       const facultyIds = [...new Set(data.content.map((a) => a.facultyId))]
       if (facultyIds.length > 0) {
-        const facultyData = await getFaculty(organizationId, 0, 100, branchId)
+        const facultyData = await fetchAll((p, s) => getFaculty(organizationId, p, s, branchId))
         const map = new Map<string, string>()
         for (const f of facultyData.content) {
           map.set(f.id, `${f.firstName} ${f.lastName}`)
@@ -74,6 +76,7 @@ function ClassFacultyAssignments() {
 
   return (
     <div className="page-container">
+      <ClassTabs organizationId={organizationId} branchId={branchId} classId={classId} />
       {toast && <Toast message={toast.message} type={toast.type} onClose={dismiss} />}
 
       <div className="mb-3">
