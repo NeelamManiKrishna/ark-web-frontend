@@ -8,8 +8,6 @@ import {
 } from '../api/academicClassApi.ts'
 import { importAcademicClasses } from '../api/bulkImportApi.ts'
 import BulkImportModal from '../components/BulkImportModal.tsx'
-import { getOrganizationById } from '../api/organizationApi.ts'
-import { getBranchById } from '../api/branchApi.ts'
 import { getFaculty } from '../api/facultyApi.ts'
 import { createFacultyAssignment } from '../api/facultyAssignmentApi.ts'
 import type {
@@ -36,9 +34,13 @@ import { CLASS_STATUS_OPTIONS, ASSIGNMENT_TYPE_OPTIONS } from '../constants/stat
 import StatusBadge from '../components/StatusBadge.tsx'
 import SortableHeader from '../components/SortableHeader.tsx'
 import Pagination from '../components/Pagination.tsx'
+import SearchBox from '../components/SearchBox.tsx'
+import { useDebounce } from '../hooks/useDebounce.ts'
 import Toast from '../components/Toast.tsx'
 import ConfirmModal from '../components/ConfirmModal.tsx'
 import Modal from '../components/Modal.tsx'
+import { useTenantNames } from '../hooks/useTenantNames.ts'
+import { fetchAll } from '../api/paging.ts'
 
 interface ClassFormData {
   name: string
@@ -84,14 +86,15 @@ function Classes() {
   const canWrite = useCanWrite(WRITE_ROLES.classes)
   const { toast, showSuccess, showError, dismiss } = useToast()
 
-  const [orgName, setOrgName] = useState('')
-  const [branchName, setBranchName] = useState('')
+  const { orgName, branchName } = useTenantNames(organizationId, branchId)
   const [classes, setClasses] = useState<AcademicClassResponse[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [page, setPage] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
   const [sort, setSort] = useState('name,asc')
+  const [search, setSearch] = useState('')
+  const debouncedSearch = useDebounce(search)
 
   // Delete confirmation state
   const [deleteTarget, setDeleteTarget] = useState<AcademicClassResponse | null>(null)
@@ -128,26 +131,14 @@ function Classes() {
     reset: resetValidation,
   } = useFormValidation(classSchema)
 
-  useEffect(() => {
-    if (!organizationId) return
-    getOrganizationById(organizationId)
-      .then((org) => setOrgName(org.name))
-      .catch(() => setOrgName('Unknown Organization'))
-  }, [organizationId])
 
-  useEffect(() => {
-    if (!organizationId || !branchId) return
-    getBranchById(organizationId, branchId)
-      .then((branch) => setBranchName(branch.name))
-      .catch(() => setBranchName('Unknown Branch'))
-  }, [organizationId, branchId])
 
   const fetchClasses = useCallback(async () => {
     if (!organizationId || !branchId) return
     setLoading(true)
     setError('')
     try {
-      const data = await getAcademicClasses(organizationId, branchId, page, 10, sort)
+      const data = await getAcademicClasses(organizationId, branchId, page, 10, sort, debouncedSearch || undefined)
       setClasses(data.content)
       setTotalPages(data.page.totalPages)
     } catch (err) {
@@ -155,13 +146,13 @@ function Classes() {
     } finally {
       setLoading(false)
     }
-  }, [organizationId, branchId, page, sort])
+  }, [organizationId, branchId, page, sort, debouncedSearch])
 
   useEffect(() => {
     fetchClasses()
   }, [fetchClasses])
 
-  useEffect(() => { setPage(0) }, [sort])
+  useEffect(() => { setPage(0) }, [sort, debouncedSearch])
 
   // Group all branch classes by academic year for the assign modal
   const assignClassGroups = useMemo(() => {
@@ -208,8 +199,8 @@ function Classes() {
     if (!organizationId || !branchId) return
     try {
       const [facultyData, classData] = await Promise.all([
-        getFaculty(organizationId, 0, 200, branchId),
-        getAcademicClasses(organizationId, branchId, 0, 200),
+        fetchAll((p, s) => getFaculty(organizationId, p, s, branchId)),
+        fetchAll((p, s) => getAcademicClasses(organizationId, branchId, p, s)),
       ])
       setAssignFacultyList(facultyData.content)
       setAllBranchClasses(classData.content)
@@ -380,6 +371,7 @@ function Classes() {
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h1 className="page-title">Classes</h1>
+          <SearchBox value={search} onChange={setSearch} label="Search classes" />
           {(orgName || branchName) && (
             <p className="text-muted mb-0">
               {orgName}

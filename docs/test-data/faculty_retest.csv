@@ -1,0 +1,3 @@
+firstName,lastName,email,phone,dateOfBirth,gender,address,city,state,zipCode,department,designation,qualifications,specializations,joiningDate,govtIdType,govtIdNumber,employeeId,branchId
+Sunita,Rao,sunita.rao@lakeview.test,+91 98450 11004,1987-02-02,Female,7 Staff Colony,Hyderabad,Telangana,500003,Science,Teacher,M.Sc,Chemistry,2022-06-01,PAN,ABCDE1234H,EMP-004,6af879d9bf09bad6921cadf7
+Broken,Email,broken-email-no-at,+91 98450 11005,1991-03-03,Male,8 Staff Colony,Hyderabad,Telangana,500003,Science,Teacher,B.Sc,Biology,2023-06-01,PAN,ABCDE1234J,EMP-005,6af879d9bf09bad6921cadf7

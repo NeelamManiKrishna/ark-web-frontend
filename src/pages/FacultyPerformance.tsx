@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useState, useCallback } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { getFacultyPerformance, getFacultyClassPerformance, getFacultySubjectPerformance } from '../api/facultyPerformanceApi.ts'
 import { useToast } from '../hooks/useToast.ts'
 import type {
@@ -11,6 +11,7 @@ import type {
 import Toast from '../components/Toast.tsx'
 import LoadingSpinner from '../components/LoadingSpinner.tsx'
 import EmptyState from '../components/EmptyState.tsx'
+import { FacultyTabs } from '../components/PageTabs.tsx'
 
 function FacultyPerformance() {
   const { organizationId, facultyId } = useParams<{
@@ -18,6 +19,7 @@ function FacultyPerformance() {
     facultyId: string
   }>()
   const navigate = useNavigate()
+  const branchId = useSearchParams()[0].get('branchId') ?? undefined
   const { toast, showError, dismiss } = useToast()
 
   const [performance, setPerformance] = useState<FacultyPerformanceResponse | null>(null)
@@ -89,6 +91,7 @@ function FacultyPerformance() {
 
   return (
     <div className="page-container">
+      <FacultyTabs organizationId={organizationId} branchId={branchId} facultyId={facultyId} />
       {toast && <Toast message={toast.message} type={toast.type} onClose={dismiss} />}
 
       <div className="mb-3">

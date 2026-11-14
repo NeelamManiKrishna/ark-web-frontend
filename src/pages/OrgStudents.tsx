@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { getStudents } from '../api/studentApi.ts'
 import { getBranches } from '../api/branchApi.ts'
 import { getAcademicClasses } from '../api/academicClassApi.ts'
-import { getOrganizationById } from '../api/organizationApi.ts'
 import { useAuth } from '../hooks/useAuth.ts'
 import { useToast } from '../hooks/useToast.ts'
 import type { StudentResponse } from '../types/student.ts'
@@ -11,9 +10,13 @@ import type { BranchResponse } from '../types/branch.ts'
 import type { AcademicClassResponse } from '../types/academicClass.ts'
 import StatusBadge from '../components/StatusBadge.tsx'
 import Pagination from '../components/Pagination.tsx'
+import SearchBox from '../components/SearchBox.tsx'
+import { useDebounce } from '../hooks/useDebounce.ts'
 import Toast from '../components/Toast.tsx'
 import LoadingSpinner from '../components/LoadingSpinner.tsx'
 import EmptyState from '../components/EmptyState.tsx'
+import { useTenantNames } from '../hooks/useTenantNames.ts'
+import { fetchAll } from '../api/paging.ts'
 
 function OrgStudents() {
   const { organizationId } = useParams<{ organizationId: string }>()
@@ -22,11 +25,15 @@ function OrgStudents() {
   const isSuperAdmin = user?.role === 'SUPER_ADMIN'
   const { toast, dismiss } = useToast()
 
-  const [orgName, setOrgName] = useState('')
+  const { orgName } = useTenantNames(organizationId)
   const [students, setStudents] = useState<StudentResponse[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [page, setPage] = useState(0)
+  const [search, setSearch] = useState('')
+  const debouncedSearch = useDebounce(search)
+
+  useEffect(() => { setPage(0) }, [debouncedSearch])
   const [totalPages, setTotalPages] = useState(0)
 
   // Filter state
@@ -44,18 +51,11 @@ function OrgStudents() {
 
   const [classNameMap, setClassNameMap] = useState<Map<string, string>>(new Map())
 
-  // Fetch org name
-  useEffect(() => {
-    if (!organizationId) return
-    getOrganizationById(organizationId)
-      .then((org) => setOrgName(org.name))
-      .catch(() => setOrgName('Unknown Organization'))
-  }, [organizationId])
 
   // Fetch branches for filter
   useEffect(() => {
     if (!organizationId) return
-    getBranches(organizationId, 0, 100)
+    fetchAll((p, s) => getBranches(organizationId, p, s))
       .then((data) => setFilterBranches(data.content))
       .catch(() => setFilterBranches([]))
   }, [organizationId])
@@ -66,7 +66,7 @@ function OrgStudents() {
       setFilterClasses([])
       return
     }
-    getAcademicClasses(organizationId, filterBranchId, 0, 100)
+    fetchAll((p, s) => getAcademicClasses(organizationId, filterBranchId, p, s))
       .then((data) => {
         setFilterClasses(data.content)
         setClassNameMap((prev) => {
@@ -89,6 +89,8 @@ function OrgStudents() {
         10,
         filterBranchId || undefined,
         filterClassId || undefined,
+        undefined,
+        debouncedSearch || undefined,
       )
       setStudents(data.content)
       setTotalPages(data.page.totalPages)
@@ -97,7 +99,7 @@ function OrgStudents() {
     } finally {
       setLoading(false)
     }
-  }, [organizationId, page, filterBranchId, filterClassId])
+  }, [organizationId, page, filterBranchId, filterClassId, debouncedSearch])
 
   useEffect(() => {
     fetchStudents()
@@ -112,7 +114,7 @@ function OrgStudents() {
     }
     if (missingBranches.size === 0) return
     for (const bid of missingBranches) {
-      getAcademicClasses(organizationId, bid, 0, 100)
+      fetchAll((p, s) => getAcademicClasses(organizationId, bid, p, s))
         .then((data) => {
           setClassNameMap((prev) => {
             const next = new Map(prev)
@@ -154,6 +156,7 @@ function OrgStudents() {
 
       <div className="mb-4">
         <h1 className="page-title">All Students</h1>
+        <SearchBox value={search} onChange={setSearch} label="Search students" />
         {orgName && <p className="text-muted mb-0">{orgName}</p>}
       </div>
 

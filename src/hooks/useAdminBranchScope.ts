@@ -1,29 +1,16 @@
-import { useEffect, useState } from 'react'
-import { getUserById } from '../api/userApi.ts'
 import { useAuth } from './useAuth.ts'
 
 /**
- * For ADMIN role, fetches the user's profile to get their assigned branchId.
- * Returns the branchId and a locked flag indicating the branch filter should be disabled.
+ * Branch restriction derived from the access scope (GET /auth/me).
+ * A user limited to exactly one branch (ADMIN, USER) gets that branch id and `branchLocked`
+ * so branch filters can be preset and disabled.
  */
-export function useAdminBranchScope(organizationId: string | undefined) {
-  const { user } = useAuth()
-  const isAdmin = user?.role === 'ADMIN'
+export function useAdminBranchScope() {
+  const { scope } = useAuth()
+  const locked = !!scope && !scope.allBranches && scope.branchIds.length === 1
 
-  const [adminBranchId, setAdminBranchId] = useState<string | undefined>()
-  const [branchLocked, setBranchLocked] = useState(false)
-
-  useEffect(() => {
-    if (!isAdmin || !organizationId || !user?.id) return
-    getUserById(organizationId, user.id)
-      .then((profile) => {
-        if (profile.branchId) {
-          setAdminBranchId(profile.branchId)
-          setBranchLocked(true)
-        }
-      })
-      .catch(() => { /* ignore — filter stays unlocked */ })
-  }, [isAdmin, organizationId, user?.id])
-
-  return { adminBranchId, branchLocked }
+  return {
+    adminBranchId: locked ? scope.branchIds[0] : undefined,
+    branchLocked: locked,
+  }
 }

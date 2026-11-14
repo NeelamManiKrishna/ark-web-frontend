@@ -8,12 +8,14 @@ interface ModalProps {
   title: string
   children: ReactNode
   footer?: ReactNode
+  /** Backdrop clicks discard the dialog only when set; forms keep unsaved input by default. */
+  closeOnBackdrop?: boolean
 }
 
 const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
-function Modal({ isOpen, onClose, title, children, footer }: ModalProps) {
+function Modal({ isOpen, onClose, title, children, footer, closeOnBackdrop = false }: ModalProps) {
   useModalEscape(isOpen, onClose)
   const dialogRef = useRef<HTMLDivElement>(null)
   const previousFocusRef = useRef<HTMLElement | null>(null)
@@ -73,7 +75,7 @@ function Modal({ isOpen, onClose, title, children, footer }: ModalProps) {
   return (
     <div
       className="modal-backdrop-custom"
-      onClick={onClose}
+      onClick={closeOnBackdrop ? onClose : undefined}
       role="dialog"
       aria-modal="true"
       aria-label={title}

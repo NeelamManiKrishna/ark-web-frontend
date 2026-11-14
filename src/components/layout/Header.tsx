@@ -11,8 +11,8 @@ function Header({ isSidebarOpen, onToggleSidebar }: HeaderProps) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
 
-  const handleLogout = () => {
-    logout()
+  const handleLogout = async () => {
+    await logout()
     navigate('/login', { replace: true })
   }
 
@@ -53,7 +53,7 @@ function Header({ isSidebarOpen, onToggleSidebar }: HeaderProps) {
             <span className="header-user-role">{user.role.replace(/_/g, ' ')}</span>
           </>
         )}
-        <div className="profile-avatar" title={user?.fullName}>{initials}</div>
+        <Link className="profile-avatar" to="/me" title="My profile" aria-label="My profile">{initials}</Link>
         <button
           className="btn btn-sm btn-outline-light header-logout"
           onClick={handleLogout}

@@ -8,7 +8,6 @@ import {
 } from '../api/branchApi.ts'
 import { importBranches } from '../api/bulkImportApi.ts'
 import BulkImportModal from '../components/BulkImportModal.tsx'
-import { getOrganizationById } from '../api/organizationApi.ts'
 import { useAuth } from '../hooks/useAuth.ts'
 import type {
   BranchResponse,
@@ -34,9 +33,12 @@ import { BRANCH_STATUS_OPTIONS } from '../constants/statuses.ts'
 import StatusBadge from '../components/StatusBadge.tsx'
 import SortableHeader from '../components/SortableHeader.tsx'
 import Pagination from '../components/Pagination.tsx'
+import SearchBox from '../components/SearchBox.tsx'
+import { useDebounce } from '../hooks/useDebounce.ts'
 import Toast from '../components/Toast.tsx'
 import ConfirmModal from '../components/ConfirmModal.tsx'
 import Modal from '../components/Modal.tsx'
+import { useTenantNames } from '../hooks/useTenantNames.ts'
 
 const EMPTY_FORM: CreateBranchRequest = {
   name: '',
@@ -66,13 +68,15 @@ function Branches() {
   const isSuperAdmin = user?.role === 'SUPER_ADMIN'
   const { toast, showSuccess, showError, dismiss } = useToast()
 
-  const [orgName, setOrgName] = useState('')
+  const { orgName } = useTenantNames(organizationId)
   const [branches, setBranches] = useState<BranchResponse[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [page, setPage] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
   const [sort, setSort] = useState('name,asc')
+  const [search, setSearch] = useState('')
+  const debouncedSearch = useDebounce(search)
 
   // Delete confirmation state
   const [deleteTarget, setDeleteTarget] = useState<BranchResponse | null>(null)
@@ -97,19 +101,13 @@ function Branches() {
     reset: resetValidation,
   } = useFormValidation(branchSchema)
 
-  useEffect(() => {
-    if (!organizationId) return
-    getOrganizationById(organizationId)
-      .then((org) => setOrgName(org.name))
-      .catch(() => setOrgName('Unknown Organization'))
-  }, [organizationId])
 
   const fetchBranches = useCallback(async () => {
     if (!organizationId) return
     setLoading(true)
     setError('')
     try {
-      const data = await getBranches(organizationId, page, 10, sort)
+      const data = await getBranches(organizationId, page, 10, sort, debouncedSearch || undefined)
       setBranches(data.content)
       setTotalPages(data.page.totalPages)
     } catch (err) {
@@ -117,13 +115,13 @@ function Branches() {
     } finally {
       setLoading(false)
     }
-  }, [organizationId, page, sort])
+  }, [organizationId, page, sort, debouncedSearch])
 
   useEffect(() => {
     fetchBranches()
   }, [fetchBranches])
 
-  useEffect(() => { setPage(0) }, [sort])
+  useEffect(() => { setPage(0) }, [sort, debouncedSearch])
 
   const openCreateModal = () => {
     setEditingBranch(null)
@@ -224,6 +222,7 @@ function Branches() {
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h1 className="page-title">Branches</h1>
+          <SearchBox value={search} onChange={setSearch} label="Search branches" />
           {orgName && <p className="text-muted mb-0">{orgName}</p>}
         </div>
         {canWrite && (

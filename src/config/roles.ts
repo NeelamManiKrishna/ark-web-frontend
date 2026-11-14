@@ -1,38 +1,15 @@
 import type { UserRole } from '../types/auth.ts'
+import { PERMISSIONS } from './permissions.ts'
+import type { Feature } from './permissions.ts'
 
-// Which roles can access each feature
-export const ROLE_PERMISSIONS = {
-  organizations: ['SUPER_ADMIN'] as UserRole[],
-  branches: ['SUPER_ADMIN', 'ORG_ADMIN'] as UserRole[],
-  classes: ['SUPER_ADMIN', 'ORG_ADMIN', 'ADMIN', 'USER'] as UserRole[],
-  students: ['SUPER_ADMIN', 'ORG_ADMIN', 'ADMIN', 'USER'] as UserRole[],
-  faculty: ['SUPER_ADMIN', 'ORG_ADMIN', 'ADMIN', 'USER'] as UserRole[],
-  users: ['SUPER_ADMIN', 'ORG_ADMIN'] as UserRole[],
-  examinations: ['SUPER_ADMIN', 'ORG_ADMIN', 'ADMIN', 'USER'] as UserRole[],
-  enrollments: ['SUPER_ADMIN', 'ORG_ADMIN', 'ADMIN', 'USER'] as UserRole[],
-  facultyAssignments: ['SUPER_ADMIN', 'ORG_ADMIN', 'ADMIN', 'USER'] as UserRole[],
-  facultyPerformance: ['SUPER_ADMIN', 'ORG_ADMIN', 'ADMIN'] as UserRole[],
-  classProgression: ['SUPER_ADMIN', 'ORG_ADMIN', 'ADMIN'] as UserRole[],
-  promotions: ['SUPER_ADMIN', 'ORG_ADMIN', 'ADMIN'] as UserRole[],
-  academicRecords: ['SUPER_ADMIN', 'ORG_ADMIN', 'ADMIN', 'USER'] as UserRole[],
-  reports: ['SUPER_ADMIN', 'ORG_ADMIN', 'ADMIN', 'USER'] as UserRole[],
-  auditLogs: ['SUPER_ADMIN'] as UserRole[],
-}
+// Compatibility views over the single table in permissions.ts. Define permissions there, not here.
+export const ROLE_PERMISSIONS = Object.fromEntries(
+  Object.entries(PERMISSIONS).map(([k, v]) => [k, v.view]),
+) as Record<Feature, UserRole[]>
 
-// Which roles can create/edit/delete within a feature
-export const WRITE_ROLES = {
-  organizations: ['SUPER_ADMIN'] as UserRole[],
-  branches: ['SUPER_ADMIN', 'ORG_ADMIN'] as UserRole[],
-  classes: ['SUPER_ADMIN', 'ORG_ADMIN', 'ADMIN'] as UserRole[],
-  students: ['SUPER_ADMIN', 'ORG_ADMIN', 'ADMIN'] as UserRole[],
-  faculty: ['SUPER_ADMIN', 'ORG_ADMIN', 'ADMIN'] as UserRole[],
-  users: ['SUPER_ADMIN', 'ORG_ADMIN'] as UserRole[],
-  examinations: ['SUPER_ADMIN', 'ORG_ADMIN', 'ADMIN'] as UserRole[],
-  enrollments: ['SUPER_ADMIN', 'ORG_ADMIN', 'ADMIN'] as UserRole[],
-  facultyAssignments: ['SUPER_ADMIN', 'ORG_ADMIN', 'ADMIN'] as UserRole[],
-  classProgression: ['SUPER_ADMIN', 'ORG_ADMIN'] as UserRole[],
-  promotions: ['SUPER_ADMIN', 'ORG_ADMIN', 'ADMIN'] as UserRole[],
-}
+export const WRITE_ROLES = Object.fromEntries(
+  Object.entries(PERMISSIONS).map(([k, v]) => [k, 'write' in v ? v.write : []]),
+) as Record<Feature, UserRole[]>
 
 export function hasRole(userRole: UserRole | undefined, allowedRoles: UserRole[]): boolean {
   return !!userRole && allowedRoles.includes(userRole)

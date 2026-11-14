@@ -15,6 +15,7 @@ import Pagination from '../components/Pagination.tsx'
 import Toast from '../components/Toast.tsx'
 import LoadingSpinner from '../components/LoadingSpinner.tsx'
 import EmptyState from '../components/EmptyState.tsx'
+import { fetchAll } from '../api/paging.ts'
 
 function ExamClassResults() {
   const { organizationId, examId, classId } = useParams<{
@@ -48,7 +49,7 @@ function ExamClassResults() {
         setBranchId(exam.branchId)
 
         // Fetch students filtered by branchId from exam
-        getStudents(organizationId, 0, 1000, exam.branchId, classId)
+        fetchAll((p, s) => getStudents(organizationId, p, s, exam.branchId, classId))
           .then((data) => {
             setStudents(data.content)
             const nameMap = new Map<string, string>()
@@ -60,7 +61,7 @@ function ExamClassResults() {
           .catch(() => showError('Failed to load students'))
 
         // Fetch academic classes to resolve class name
-        getAcademicClasses(organizationId, exam.branchId, 0, 100)
+        fetchAll((p, s) => getAcademicClasses(organizationId, exam.branchId, p, s))
           .then((data) => {
             const found = data.content.find((c) => c.id === classId)
             if (found) {
@@ -75,7 +76,7 @@ function ExamClassResults() {
       })
 
     // Fetch exam subjects for name and max marks maps
-    getExamSubjects(organizationId, examId, 0, 100)
+    fetchAll((p, s) => getExamSubjects(organizationId, examId, p, s))
       .then((data) => {
         const nameMap = new Map<string, string>()
         const marksMap = new Map<string, number>()
@@ -94,7 +95,7 @@ function ExamClassResults() {
     setLoading(true)
     setError('')
     try {
-      const data = await getClassExamResults(organizationId, examId, classId, 0, 1000)
+      const data = await fetchAll((p, s) => getClassExamResults(organizationId, examId, classId, p, s))
       setAllResults(data.content)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load class exam results')

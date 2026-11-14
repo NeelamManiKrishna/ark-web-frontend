@@ -30,6 +30,7 @@ import Toast from '../components/Toast.tsx'
 import Modal from '../components/Modal.tsx'
 import LoadingSpinner from '../components/LoadingSpinner.tsx'
 import EmptyState from '../components/EmptyState.tsx'
+import { fetchAll } from '../api/paging.ts'
 
 interface ResultFormData {
   studentId: string
@@ -111,7 +112,7 @@ function ExamResults() {
   // Fetch subject details
   useEffect(() => {
     if (!organizationId || !examId || !subjectId) return
-    getExamSubjects(organizationId, examId, 0, 100)
+    fetchAll((p, s) => getExamSubjects(organizationId, examId, p, s))
       .then((data) => {
         const found = data.content.find((s) => s.id === subjectId)
         if (found) setSubject(found)
@@ -122,7 +123,7 @@ function ExamResults() {
   // Fetch students scoped to the subject's class (not entire branch)
   useEffect(() => {
     if (!organizationId || !examBranchId || !subject) return
-    getStudents(organizationId, 0, 1000, examBranchId, subject.classId)
+    fetchAll((p, s) => getStudents(organizationId, p, s, examBranchId, subject.classId))
       .then((data) => {
         setStudents(data.content)
         const nameMap = new Map<string, string>()

@@ -15,11 +15,13 @@ export function getBranches(
   page = 0,
   size = 10,
   sort?: string,
+  q?: string,
 ): Promise<PagedResponse<BranchResponse>> {
   const params = new URLSearchParams()
   params.set('page', String(page))
   params.set('size', String(size))
   if (sort) params.set('sort', sort)
+  if (q) params.set('q', q)
   return get(`${basePath(organizationId)}?${params.toString()}`)
 }
 

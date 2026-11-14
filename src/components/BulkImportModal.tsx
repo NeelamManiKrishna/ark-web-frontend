@@ -63,7 +63,10 @@ function BulkImportModal({
   }
 
   const handleDownloadSample = () => {
-    downloadSampleCsv(organizationId, entityType)
+    setError('')
+    downloadSampleCsv(organizationId, entityType).catch((err) =>
+      setError(err instanceof Error ? err.message : 'Failed to download sample'),
+    )
   }
 
   return (

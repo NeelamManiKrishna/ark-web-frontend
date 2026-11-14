@@ -7,7 +7,6 @@ import {
   deleteUser,
 } from '../api/userApi.ts'
 import { getBranches } from '../api/branchApi.ts'
-import { getOrganizationById } from '../api/organizationApi.ts'
 import { useAuth } from '../hooks/useAuth.ts'
 import type {
   UserResponse,
@@ -33,11 +32,15 @@ import { WRITE_ROLES } from '../config/roles.ts'
 import StatusBadge from '../components/StatusBadge.tsx'
 import SortableHeader from '../components/SortableHeader.tsx'
 import Pagination from '../components/Pagination.tsx'
+import SearchBox from '../components/SearchBox.tsx'
+import { useDebounce } from '../hooks/useDebounce.ts'
 import Toast from '../components/Toast.tsx'
 import ConfirmModal from '../components/ConfirmModal.tsx'
 import Modal from '../components/Modal.tsx'
 import LoadingSpinner from '../components/LoadingSpinner.tsx'
 import EmptyState from '../components/EmptyState.tsx'
+import { useTenantNames } from '../hooks/useTenantNames.ts'
+import { fetchAll } from '../api/paging.ts'
 
 const EMPTY_FORM: UserFormData = {
   fullName: '',
@@ -90,13 +93,15 @@ function Users() {
   const isSuperAdmin = user?.role === 'SUPER_ADMIN'
   const { toast, showSuccess, showError, dismiss } = useToast()
 
-  const [orgName, setOrgName] = useState('')
+  const { orgName } = useTenantNames(organizationId)
   const [userList, setUserList] = useState<UserResponse[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [page, setPage] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
   const [sort, setSort] = useState('fullName,asc')
+  const [search, setSearch] = useState('')
+  const debouncedSearch = useDebounce(search)
 
   // Filter state
   const [filterBranchId, setFilterBranchId] = useState('')
@@ -130,18 +135,11 @@ function Users() {
     reset: resetValidation,
   } = useFormValidation(activeSchema)
 
-  // Fetch org name
-  useEffect(() => {
-    if (!organizationId) return
-    getOrganizationById(organizationId)
-      .then((org) => setOrgName(org.name))
-      .catch(() => setOrgName('Unknown Organization'))
-  }, [organizationId])
 
   // Fetch branches for filter bar
   useEffect(() => {
     if (!organizationId) return
-    getBranches(organizationId, 0, 100)
+    fetchAll((p, s) => getBranches(organizationId, p, s))
       .then((data) => setFilterBranches(data.content))
       .catch(() => setFilterBranches([]))
   }, [organizationId])
@@ -157,6 +155,7 @@ function Users() {
         10,
         filterBranchId || undefined,
         sort,
+        debouncedSearch || undefined,
       )
       setUserList(data.content)
       setTotalPages(data.page.totalPages)
@@ -165,13 +164,13 @@ function Users() {
     } finally {
       setLoading(false)
     }
-  }, [organizationId, page, filterBranchId, sort])
+  }, [organizationId, page, filterBranchId, sort, debouncedSearch])
 
   useEffect(() => {
     fetchUsers()
   }, [fetchUsers])
 
-  useEffect(() => { setPage(0) }, [sort])
+  useEffect(() => { setPage(0) }, [sort, debouncedSearch])
 
   // Filter handlers
   const handleFilterBranchChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -183,7 +182,7 @@ function Users() {
   const fetchModalBranches = useCallback(async () => {
     if (!organizationId) return
     try {
-      const data = await getBranches(organizationId, 0, 100)
+      const data = await fetchAll((p, s) => getBranches(organizationId, p, s))
       setModalBranches(data.content)
     } catch {
       setModalBranches([])
@@ -330,6 +329,7 @@ function Users() {
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h1 className="page-title">Users</h1>
+          <SearchBox value={search} onChange={setSearch} label="Search users" />
           {orgName && <p className="text-muted mb-0">{orgName}</p>}
         </div>
         {canWrite && (

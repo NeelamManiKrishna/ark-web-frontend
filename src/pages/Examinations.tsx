@@ -6,8 +6,6 @@ import {
   updateExamination,
   deleteExamination,
 } from '../api/examinationApi.ts'
-import { getOrganizationById } from '../api/organizationApi.ts'
-import { getBranchById } from '../api/branchApi.ts'
 import type {
   ExaminationResponse,
   CreateExaminationRequest,
@@ -34,6 +32,7 @@ import ConfirmModal from '../components/ConfirmModal.tsx'
 import Modal from '../components/Modal.tsx'
 import LoadingSpinner from '../components/LoadingSpinner.tsx'
 import EmptyState from '../components/EmptyState.tsx'
+import { useTenantNames } from '../hooks/useTenantNames.ts'
 
 interface ExamFormData {
   name: string
@@ -97,8 +96,7 @@ function Examinations() {
   const canWrite = useCanWrite(WRITE_ROLES.examinations)
   const { toast, showSuccess, showError, dismiss } = useToast()
 
-  const [orgName, setOrgName] = useState('')
-  const [branchName, setBranchName] = useState('')
+  const { orgName, branchName } = useTenantNames(organizationId, branchId)
   const [examinations, setExaminations] = useState<ExaminationResponse[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -129,19 +127,7 @@ function Examinations() {
     reset: resetValidation,
   } = useFormValidation(examSchema)
 
-  useEffect(() => {
-    if (!organizationId) return
-    getOrganizationById(organizationId)
-      .then((org) => setOrgName(org.name))
-      .catch(() => setOrgName('Unknown Organization'))
-  }, [organizationId])
 
-  useEffect(() => {
-    if (!organizationId || !branchId) return
-    getBranchById(organizationId, branchId)
-      .then((branch) => setBranchName(branch.name))
-      .catch(() => setBranchName('Unknown Branch'))
-  }, [organizationId, branchId])
 
   const fetchExaminations = useCallback(async () => {
     if (!organizationId || !branchId) return

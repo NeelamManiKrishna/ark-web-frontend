@@ -1,0 +1,3 @@
+firstName,lastName,email,phone,dateOfBirth,gender,address,city,state,zipCode,department,designation,qualifications,specializations,joiningDate,govtIdType,govtIdNumber,employeeId,branchId
+Rahul,Menon,rahul.menon@lakeview.test,+91 98450 11002,1988-09-03,Male,5 Staff Colony,Hyderabad,Telangana,500003,English,Teacher,M.A English|B.Ed,Literature,2020-06-01,PAN,ABCDE1234F,EMP-002,6af879d9bf09bad6921cadf7
+Bad,Row,not-an-email,+91 98450 11003,1990-01-01,Male,6 Staff Colony,Hyderabad,Telangana,500003,Science,Teacher,B.Sc,Physics,2021-06-01,PAN,ABCDE1234G,EMP-003,6af879d9bf09bad6921cadf7

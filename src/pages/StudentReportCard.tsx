@@ -14,6 +14,7 @@ import type { StudentResponse } from '../types/student.ts'
 import { useToast } from '../hooks/useToast.ts'
 import StatusBadge from '../components/StatusBadge.tsx'
 import Toast from '../components/Toast.tsx'
+import { fetchAll } from '../api/paging.ts'
 
 function StudentReportCard() {
   const { organizationId, examId, studentId } = useParams<{
@@ -49,7 +50,7 @@ function StudentReportCard() {
         setResults(resultsData)
 
         // 3. Fetch exam subjects to build lookup maps
-        const subjectsData = await getExamSubjects(organizationId, examId, 0, 100)
+        const subjectsData = await fetchAll((p, s) => getExamSubjects(organizationId, examId, p, s))
         const nameMap = new Map<string, string>()
         const maxMap = new Map<string, number>()
         const passMap = new Map<string, number>()
@@ -63,7 +64,7 @@ function StudentReportCard() {
         setSubjectPassingMarksMap(passMap)
 
         // 4. Fetch students to find the specific student
-        const studentsData = await getStudents(organizationId, 0, 1000, examData.branchId)
+        const studentsData = await fetchAll((p, s) => getStudents(organizationId, p, s, examData.branchId))
         const found = studentsData.content.find((s) => s.id === studentId)
         if (found) {
           setStudent(found)

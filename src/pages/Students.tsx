@@ -10,8 +10,6 @@ import { importStudents } from '../api/bulkImportApi.ts'
 import BulkImportModal from '../components/BulkImportModal.tsx'
 import { getAcademicClasses } from '../api/academicClassApi.ts'
 import { getActiveEnrollment } from '../api/enrollmentApi.ts'
-import { getOrganizationById } from '../api/organizationApi.ts'
-import { getBranchById } from '../api/branchApi.ts'
 import { useToast } from '../hooks/useToast.ts'
 import type {
   StudentResponse,
@@ -37,9 +35,13 @@ import { STUDENT_STATUS_OPTIONS, GENDER_OPTIONS, GOVT_ID_TYPE_OPTIONS } from '..
 import StatusBadge from '../components/StatusBadge.tsx'
 import SortableHeader from '../components/SortableHeader.tsx'
 import Pagination from '../components/Pagination.tsx'
+import SearchBox from '../components/SearchBox.tsx'
+import { useDebounce } from '../hooks/useDebounce.ts'
 import Toast from '../components/Toast.tsx'
 import ConfirmModal from '../components/ConfirmModal.tsx'
 import Modal from '../components/Modal.tsx'
+import { useTenantNames } from '../hooks/useTenantNames.ts'
+import { fetchAll } from '../api/paging.ts'
 
 const EMPTY_FORM: CreateStudentRequest = {
   branchId: '',
@@ -99,8 +101,7 @@ function Students() {
 
   const { toast, showSuccess, showError, dismiss } = useToast()
 
-  const [orgName, setOrgName] = useState('')
-  const [branchName, setBranchName] = useState('')
+  const { orgName, branchName } = useTenantNames(organizationId, branchId)
   const [students, setStudents] = useState<StudentResponse[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -108,6 +109,8 @@ function Students() {
   const [totalPages, setTotalPages] = useState(0)
 
   const [sort, setSort] = useState('firstName,asc')
+  const [search, setSearch] = useState('')
+  const debouncedSearch = useDebounce(search)
 
   // Filter state (class only — branch is from URL)
   const [filterClassId, setFilterClassId] = useState('')
@@ -146,26 +149,12 @@ function Students() {
     reset: resetValidation,
   } = useFormValidation(activeSchema)
 
-  // Fetch org name
-  useEffect(() => {
-    if (!organizationId) return
-    getOrganizationById(organizationId)
-      .then((org) => setOrgName(org.name))
-      .catch(() => setOrgName('Unknown Organization'))
-  }, [organizationId])
 
-  // Fetch branch name
-  useEffect(() => {
-    if (!organizationId || !branchId) return
-    getBranchById(organizationId, branchId)
-      .then((branch) => setBranchName(branch.name))
-      .catch(() => setBranchName('Unknown Branch'))
-  }, [organizationId, branchId])
 
   // Fetch classes for the branch (filter + name lookup)
   useEffect(() => {
     if (!organizationId || !branchId) return
-    getAcademicClasses(organizationId, branchId, 0, 100)
+    fetchAll((p, s) => getAcademicClasses(organizationId, branchId, p, s))
       .then((data) => {
         setFilterClasses(data.content)
         const map = new Map<string, string>()
@@ -187,6 +176,7 @@ function Students() {
         branchId,
         filterClassId || undefined,
         sort,
+        debouncedSearch || undefined,
       )
       setStudents(data.content)
       setTotalPages(data.page.totalPages)
@@ -206,13 +196,13 @@ function Students() {
     } finally {
       setLoading(false)
     }
-  }, [organizationId, branchId, page, filterClassId, sort])
+  }, [organizationId, branchId, page, filterClassId, sort, debouncedSearch])
 
   useEffect(() => {
     fetchStudents()
   }, [fetchStudents])
 
-  useEffect(() => { setPage(0) }, [sort])
+  useEffect(() => { setPage(0) }, [sort, debouncedSearch])
 
   const handleFilterClassChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setFilterClassId(e.target.value)
@@ -226,7 +216,7 @@ function Students() {
       return
     }
     try {
-      const data = await getAcademicClasses(organizationId, brId, 0, 100)
+      const data = await fetchAll((p, s) => getAcademicClasses(organizationId, brId, p, s))
       setModalClasses(data.content)
     } catch {
       setModalClasses([])
@@ -364,6 +354,7 @@ function Students() {
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h1 className="page-title">Students</h1>
+          <SearchBox value={search} onChange={setSearch} label="Search students" />
           {(orgName || branchName) && (
             <p className="text-muted mb-0">
               {orgName}

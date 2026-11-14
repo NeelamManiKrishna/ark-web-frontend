@@ -14,6 +14,8 @@ import Modal from '../components/Modal.tsx'
 import { EXIT_REASON_OPTIONS } from '../constants/statuses.ts'
 import LoadingSpinner from '../components/LoadingSpinner.tsx'
 import EmptyState from '../components/EmptyState.tsx'
+import { StudentTabs } from '../components/PageTabs.tsx'
+import { fetchAll } from '../api/paging.ts'
 
 function StudentEnrollmentHistory() {
   const { organizationId, branchId, studentId } = useParams<{
@@ -61,7 +63,7 @@ function StudentEnrollmentHistory() {
   // Fetch classes for name lookup + enroll form
   useEffect(() => {
     if (!organizationId || !branchId) return
-    getAcademicClasses(organizationId, branchId, 0, 100)
+    fetchAll((p, s) => getAcademicClasses(organizationId, branchId, p, s))
       .then((data) => {
         setClasses(data.content)
         const map = new Map<string, string>()
@@ -159,6 +161,7 @@ function StudentEnrollmentHistory() {
 
   return (
     <div className="page-container">
+      <StudentTabs organizationId={organizationId} branchId={branchId} studentId={studentId} />
       {toast && <Toast message={toast.message} type={toast.type} onClose={dismiss} />}
 
       <div className="mb-3">

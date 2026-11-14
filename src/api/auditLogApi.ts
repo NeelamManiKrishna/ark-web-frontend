@@ -21,3 +21,23 @@ export function getAuditLogs(
   if (sort) params.set('sort', sort)
   return get(`/api/v1/audit-logs?${params.toString()}`)
 }
+
+/** Audit trail of one organization (SUPER_ADMIN, or that organization's ORG_ADMIN). */
+export function getOrganizationAuditLogs(
+  organizationId: string,
+  page = 0,
+  size = 20,
+  action?: string,
+  entityType?: string,
+  userId?: string,
+  sort?: string,
+): Promise<PagedResponse<AuditLogResponse>> {
+  const params = new URLSearchParams()
+  params.set('page', String(page))
+  params.set('size', String(size))
+  if (action) params.set('action', action)
+  if (entityType) params.set('entityType', entityType)
+  if (userId) params.set('userId', userId)
+  if (sort) params.set('sort', sort)
+  return get(`/api/v1/organizations/${organizationId}/audit-logs?${params.toString()}`)
+}
